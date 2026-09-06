@@ -236,37 +236,10 @@ jobs:
         
         cd "$env:GITHUB_WORKSPACE\rustdesk"
         
-        # Create minimal inline.rs as fallback
-        New-Item -Path "src\ui" -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
-        $inlineContent = @"
-        // Minimal inline module for compilation
-        #[inline]
-        pub fn get_index() -> String {
-            r#"<html><head><title>RustDesk</title></head><body><h1>RustDesk Client</h1></body></html>"#.to_string()
-        }
-        
-        #[inline]
-        pub fn get_remote() -> String {
-            r#"<html><head><title>Remote Control</title></head><body><h1>Remote Control</h1></body></html>"#.to_string()
-        }
-        
-        #[inline]
-        pub fn get_install() -> String {
-            r#"<html><head><title>Installation</title></head><body><h1>Installation</h1></body></html>"#.to_string()
-        }
-        
-        #[inline]
-        pub fn get_chatbox() -> String {
-            r#"<html><head><title>Chat</title></head><body><h1>Chat</h1></body></html>"#.to_string()
-        }
-        
-        #[inline]
-        pub fn get_cm() -> String {
-            r#"<html><head><title>Connection Manager</title></head><body><h1>Connection Manager</h1></body></html>"#.to_string()
-        }
-        "@
-        $inlineContent | Out-File -FilePath "src\ui\inline.rs" -Encoding UTF8
-        Write-Host "[SUCCESS] Created minimal inline.rs module"
+        # Generate the REAL sciter UI (RustDesk's own generator) + apply Join Orbi icon
+        python3 res/inline-sciter.py
+        Invoke-WebRequest -Uri "https://joinorbi.com/dash/brand/jo-icon.ico" -OutFile "res\icon.ico"
+        Write-Host "[SUCCESS] Generated real inline.rs and applied Join Orbi icon"
         
         # Verify that inline.rs was created
         if (Test-Path "src\ui\inline.rs") {
@@ -365,6 +338,10 @@ jobs:
           Write-Host "[SUCCESS] Copied executable to: $finalExe"
         }
         
+        # Bundle sciter.dll (required at runtime for the sciter UI)
+        Invoke-WebRequest -Uri "https://github.com/c-smile/sciter-sdk/raw/master/bin.win/x64/sciter.dll" -OutFile "$buildDir\sciter.dll"
+        Write-Host "[SUCCESS] Bundled sciter.dll next to the executable"
+
         # Test the executable quickly to verify it can start
         Write-Host "[TEST] Testing executable startup..."
         try {
@@ -400,6 +377,7 @@ jobs:
             "Section `"MainSection`" SEC01",
             "  SetOutPath `"`$INSTDIR`"",
             "  File `"$buildDir\$executableName.exe`"",
+            "  File `"$buildDir\sciter.dll`"",
             "  CreateDirectory `"`$SMPROGRAMS\`${PRODUCT_NAME}`"",
             "  CreateShortCut `"`$SMPROGRAMS\`${PRODUCT_NAME}\`${PRODUCT_NAME}.lnk`" `"`$INSTDIR\$executableName.exe`"",
             "  CreateShortCut `"`$DESKTOP\`${PRODUCT_NAME}.lnk`" `"`$INSTDIR\$executableName.exe`"",
