@@ -236,32 +236,32 @@ jobs:
         # Create minimal inline.rs as fallback
         New-Item -Path "src\ui" -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
         $inlineContent = @"
-// Minimal inline module for compilation
-#[inline]
-pub fn get_index() -> String {
-    r#"<html><head><title>RustDesk</title></head><body><h1>RustDesk Client</h1></body></html>"#.to_string()
-}
-
-#[inline]
-pub fn get_remote() -> String {
-    r#"<html><head><title>Remote Control</title></head><body><h1>Remote Control</h1></body></html>"#.to_string()
-}
-
-#[inline]
-pub fn get_install() -> String {
-    r#"<html><head><title>Installation</title></head><body><h1>Installation</h1></body></html>"#.to_string()
-}
-
-#[inline]
-pub fn get_chatbox() -> String {
-    r#"<html><head><title>Chat</title></head><body><h1>Chat</h1></body></html>"#.to_string()
-}
-
-#[inline]
-pub fn get_cm() -> String {
-    r#"<html><head><title>Connection Manager</title></head><body><h1>Connection Manager</h1></body></html>"#.to_string()
-}
-"@
+        // Minimal inline module for compilation
+        #[inline]
+        pub fn get_index() -> String {
+            r#"<html><head><title>RustDesk</title></head><body><h1>RustDesk Client</h1></body></html>"#.to_string()
+        }
+        
+        #[inline]
+        pub fn get_remote() -> String {
+            r#"<html><head><title>Remote Control</title></head><body><h1>Remote Control</h1></body></html>"#.to_string()
+        }
+        
+        #[inline]
+        pub fn get_install() -> String {
+            r#"<html><head><title>Installation</title></head><body><h1>Installation</h1></body></html>"#.to_string()
+        }
+        
+        #[inline]
+        pub fn get_chatbox() -> String {
+            r#"<html><head><title>Chat</title></head><body><h1>Chat</h1></body></html>"#.to_string()
+        }
+        
+        #[inline]
+        pub fn get_cm() -> String {
+            r#"<html><head><title>Connection Manager</title></head><body><h1>Connection Manager</h1></body></html>"#.to_string()
+        }
+        "@
         $inlineContent | Out-File -FilePath "src\ui\inline.rs" -Encoding UTF8
         Write-Host "[SUCCESS] Created minimal inline.rs module"
         
