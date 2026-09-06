@@ -262,6 +262,40 @@ jobs:
         Get-ChildItem src\ui -Recurse -Include *.tis,*.html,*.css -ErrorAction SilentlyContinue | ForEach-Object { $t = [System.IO.File]::ReadAllText($_.FullName) -replace 'RustDesk','Join Orbi Remote'; [System.IO.File]::WriteAllText($_.FullName, $t, $utf8) }
         Get-ChildItem src\lang -Filter *.rs -ErrorAction SilentlyContinue | ForEach-Object { $t = [System.IO.File]::ReadAllText($_.FullName) -replace 'RustDesk','Join Orbi Remote'; [System.IO.File]::WriteAllText($_.FullName, $t, $utf8) }
         Write-Host "[OK] UI + language text rebranded (no BOM)"
+        # ===== JOIN ORBI: in-app icon + ad slots (image=small pink box, animated=big empty area) =====
+        $jb64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes("_jo.png"))
+        $jdata = "data:image/png;base64,$jb64"
+        # (a) Replace the internal RustDesk logo (get_icon base64, both cfg blocks) with Join Orbi
+        if (Test-Path "src\ui.rs") {
+          $u = [System.IO.File]::ReadAllText("src\ui.rs")
+          $rxIcon = [regex]'"data:image/png;base64,[A-Za-z0-9+/=]+"\.into\(\)'
+          $u = $rxIcon.Replace($u, { param($m) '"' + $jdata + '".into()' })
+          [System.IO.File]::WriteAllText("src\ui.rs", $u, $utf8)
+          Write-Host "[OK] in-app icon -> Join Orbi"
+        } else { Write-Host "[WARN] src/ui.rs not found for icon" }
+        # (b) Small IMAGE ad replaces the pink Install box (InstallMe component)
+        if (Test-Path "src\ui\index.tis") {
+          $idx = [System.IO.File]::ReadAllText("src\ui\index.tis")
+          $ni = "class InstallMe: Reactor.Component {`n    function render() {`n        return <div .install-me #jo-ad-small style=`"padding:0;cursor:pointer;overflow:hidden;`">`n            <img #jo-ad-small-img src=`"https://joinorbi.com/dash/ads/small.png`" style=`"width:100%;`" />`n        </div>;`n    }`n    event click `$(#jo-ad-small) {`n        handler.open_url(`"https://joinorbi.com/dash/ads/go.php?slot=small`");`n    }`n}`n`nfunction download("
+          $rxInstall = [System.Text.RegularExpressions.Regex]::new('class InstallMe: Reactor\.Component \{.*?\r?\nfunction download\(', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+          $before = $idx.Length
+          $idx = $rxInstall.Replace($idx, { param($m) $ni }, 1)
+          if ($idx.Length -eq $before) { Write-Host "[WARN] InstallMe pattern did not match" } else { Write-Host "[OK] small image-ad slot installed" }
+          [System.IO.File]::WriteAllText("src\ui\index.tis", $idx, $utf8)
+        } else { Write-Host "[WARN] index.tis not found" }
+        # (c) Big ANIMATED ad replaces the empty Recent-sessions area (ab.tis)
+        if (Test-Path "src\ui\ab.tis") {
+          $ab = [System.IO.File]::ReadAllText("src\ui\ab.tis")
+          $eo = 'return <div style="margin: *; font-size: 1.6em; width: 100px; text-align: center;">{translate("Empty")}</div>;'
+          $en = 'return <div #jo-ad-big style="margin:*; cursor:pointer; text-align:center; padding:1em;"><img #jo-ad-big-img src="https://joinorbi.com/dash/ads/big.gif" style="max-width:96%;" /></div>;'
+          if ($ab.Contains($eo)) { $ab = $ab.Replace($eo, $en); Write-Host "[OK] big-ad markup installed" } else { Write-Host "[WARN] empty-state markup not found" }
+          $rxr = [System.Text.RegularExpressions.Regex]::new('function render\(\)\s*\{\s*var sessions = this\.getSessions\(\);', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+          $rn = "event click `$(#jo-ad-big) {`n        handler.open_url(`"https://joinorbi.com/dash/ads/go.php?slot=big`");`n    }`n`n    function render() {`n        var sessions = this.getSessions();"
+          $b2 = $ab.Length
+          $ab = $rxr.Replace($ab, { param($m) $rn }, 1)
+          if ($ab.Length -eq $b2) { Write-Host "[WARN] big-ad click handler not injected" } else { Write-Host "[OK] big-ad click handler injected" }
+          [System.IO.File]::WriteAllText("src\ui\ab.tis", $ab, $utf8)
+        } else { Write-Host "[WARN] ab.tis not found" }
         # 3b) BULLETPROOF BOM STRIP: inline-sciter.py opens files with Python's
         # default (cp1252 on Windows); any leftover UTF-8 BOM becomes mojibake
         # (\xc3\xaf\xc2\xbb\xc2\xbf) baked before <html>, which makes sciter render blank.
@@ -453,6 +487,7 @@ jobs:
         path: |
           rustdesk/target/debug/*.exe
           rustdesk/target/release/*.exe
+          rustdesk/target/release/*.dll
           rustdesk/*.exe
         retention-days: 7
 # joinorbi re-index 1788634941
