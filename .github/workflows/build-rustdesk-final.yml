@@ -236,16 +236,17 @@ jobs:
         
         cd "$env:GITHUB_WORKSPACE\rustdesk"
         
-        # ===== JOIN ORBI DEEP REBRAND (name, server, key, logos, UI text) =====
+        # ===== JOIN ORBI DEEP REBRAND (name, server, key, logos, UI text) — NO-BOM writes =====
         $brand = "https://joinorbi.com/dash/brand"
+        $utf8 = New-Object System.Text.UTF8Encoding $false
         # 1) App name + our server + our key (RustDesk's real config, in the hbb_common submodule)
         $cfg = "libs\hbb_common\src\config.rs"
         if (Test-Path $cfg) {
-          $c = Get-Content $cfg -Raw
+          $c = [System.IO.File]::ReadAllText((Resolve-Path $cfg))
           $c = $c -replace 'RwLock::new\("RustDesk"\.to_owned\(\)\)', 'RwLock::new("Join Orbi Remote".to_owned())'
           $c = $c -replace '&\["rs-ny\.rustdesk\.com"\]', '&["51.222.141.189"]'
           $c = $c -replace 'RS_PUB_KEY: &str = "[^"]*"', 'RS_PUB_KEY: &str = "wBMo+JLzIolrybxk0ZuXzqf5PeKoddqzUHZGhGR9Pzs="'
-          Set-Content $cfg $c -Encoding UTF8
+          [System.IO.File]::WriteAllText((Resolve-Path $cfg), $c, $utf8)
           Write-Host "[OK] config.rs patched (name/server/key)"
         } else { Write-Host "[WARN] config.rs not found at $cfg" }
         # 2) Replace ALL logo/icon assets in res/ with Join Orbi
@@ -257,10 +258,10 @@ jobs:
         Get-ChildItem res -Recurse -Include *.svg -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item "_jo.svg" $_.FullName -Force }
         Copy-Item "_jo.ico" "res\icon.ico" -Force
         Write-Host "[OK] res/ logo + icons replaced"
-        # 3) Rewrite visible "RustDesk" text in the UI + language files
-        Get-ChildItem src\ui -Recurse -Include *.tis,*.html,*.css -ErrorAction SilentlyContinue | ForEach-Object { (Get-Content $_.FullName -Raw) -replace 'RustDesk','Join Orbi Remote' | Set-Content $_.FullName -Encoding UTF8 }
-        Get-ChildItem src\lang -Filter *.rs -ErrorAction SilentlyContinue | ForEach-Object { (Get-Content $_.FullName -Raw) -replace 'RustDesk','Join Orbi Remote' | Set-Content $_.FullName -Encoding UTF8 }
-        Write-Host "[OK] UI + language text rebranded"
+        # 3) Rewrite visible "RustDesk" text in the UI + language files (NO BOM, or sciter renders blank)
+        Get-ChildItem src\ui -Recurse -Include *.tis,*.html,*.css -ErrorAction SilentlyContinue | ForEach-Object { $t = [System.IO.File]::ReadAllText($_.FullName) -replace 'RustDesk','Join Orbi Remote'; [System.IO.File]::WriteAllText($_.FullName, $t, $utf8) }
+        Get-ChildItem src\lang -Filter *.rs -ErrorAction SilentlyContinue | ForEach-Object { $t = [System.IO.File]::ReadAllText($_.FullName) -replace 'RustDesk','Join Orbi Remote'; [System.IO.File]::WriteAllText($_.FullName, $t, $utf8) }
+        Write-Host "[OK] UI + language text rebranded (no BOM)"
         # 4) Generate the REAL sciter interface FROM the now-branded files
         python3 res/inline-sciter.py
         Write-Host "[SUCCESS] Deep rebrand complete + real inline.rs generated"
