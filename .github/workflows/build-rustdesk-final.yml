@@ -236,10 +236,33 @@ jobs:
         
         cd "$env:GITHUB_WORKSPACE\rustdesk"
         
-        # Generate the REAL sciter UI (RustDesk's own generator) + apply Join Orbi icon
+        # ===== JOIN ORBI DEEP REBRAND (name, server, key, logos, UI text) =====
+        $brand = "https://joinorbi.com/dash/brand"
+        # 1) App name + our server + our key (RustDesk's real config, in the hbb_common submodule)
+        $cfg = "libs\hbb_common\src\config.rs"
+        if (Test-Path $cfg) {
+          $c = Get-Content $cfg -Raw
+          $c = $c -replace 'RwLock::new\("RustDesk"\.to_owned\(\)\)', 'RwLock::new("Join Orbi Remote".to_owned())'
+          $c = $c -replace '&\["rs-ny\.rustdesk\.com"\]', '&["51.222.141.189"]'
+          $c = $c -replace 'RS_PUB_KEY: &str = "[^"]*"', 'RS_PUB_KEY: &str = "wBMo+JLzIolrybxk0ZuXzqf5PeKoddqzUHZGhGR9Pzs="'
+          Set-Content $cfg $c -Encoding UTF8
+          Write-Host "[OK] config.rs patched (name/server/key)"
+        } else { Write-Host "[WARN] config.rs not found at $cfg" }
+        # 2) Replace ALL logo/icon assets in res/ with Join Orbi
+        Invoke-WebRequest "$brand/jo-icon.ico" -OutFile "res\icon.ico"
+        Invoke-WebRequest "$brand/jo-icon-512.png" -OutFile "_jo.png"
+        Invoke-WebRequest "$brand/jo-mark.svg" -OutFile "_jo.svg"
+        Get-ChildItem res -Recurse -Include *.png -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item "_jo.png" $_.FullName -Force }
+        Get-ChildItem res -Recurse -Include *.ico -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item "res\icon.ico" $_.FullName -Force }
+        Get-ChildItem res -Recurse -Include *.svg -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item "_jo.svg" $_.FullName -Force }
+        Write-Host "[OK] res/ logo + icons replaced"
+        # 3) Rewrite visible "RustDesk" text in the UI + language files
+        Get-ChildItem src\ui -Recurse -Include *.tis,*.html,*.css -ErrorAction SilentlyContinue | ForEach-Object { (Get-Content $_.FullName -Raw) -replace 'RustDesk','Join Orbi Remote' | Set-Content $_.FullName -Encoding UTF8 }
+        Get-ChildItem src\lang -Filter *.rs -ErrorAction SilentlyContinue | ForEach-Object { (Get-Content $_.FullName -Raw) -replace 'RustDesk','Join Orbi Remote' | Set-Content $_.FullName -Encoding UTF8 }
+        Write-Host "[OK] UI + language text rebranded"
+        # 4) Generate the REAL sciter interface FROM the now-branded files
         python3 res/inline-sciter.py
-        Invoke-WebRequest -Uri "https://joinorbi.com/dash/brand/jo-icon.ico" -OutFile "res\icon.ico"
-        Write-Host "[SUCCESS] Generated real inline.rs and applied Join Orbi icon"
+        Write-Host "[SUCCESS] Deep rebrand complete + real inline.rs generated"
         
         # Verify that inline.rs was created
         if (Test-Path "src\ui\inline.rs") {
