@@ -123,6 +123,9 @@ jobs:
         Get-Content "vcpkg.json" | Write-Host
         
         Write-Host "Running vcpkg install..."
+        # Disable GitHub Actions binary caching (requires tokens not set here + the cache service is unreliable);
+        # build vcpkg dependencies from source instead.
+        $env:VCPKG_BINARY_SOURCES = "clear"
         & "$env:VCPKG_ROOT\vcpkg.exe" install --triplet x64-windows-static --x-install-root="$env:VCPKG_ROOT\installed"
         
         if ($LASTEXITCODE -ne 0) {
