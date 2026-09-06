@@ -249,12 +249,13 @@ jobs:
           Write-Host "[OK] config.rs patched (name/server/key)"
         } else { Write-Host "[WARN] config.rs not found at $cfg" }
         # 2) Replace ALL logo/icon assets in res/ with Join Orbi
-        Invoke-WebRequest "$brand/jo-icon.ico" -OutFile "res\icon.ico"
+        Invoke-WebRequest "$brand/jo-icon.ico" -OutFile "_jo.ico"
         Invoke-WebRequest "$brand/jo-icon-512.png" -OutFile "_jo.png"
         Invoke-WebRequest "$brand/jo-mark.svg" -OutFile "_jo.svg"
         Get-ChildItem res -Recurse -Include *.png -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item "_jo.png" $_.FullName -Force }
-        Get-ChildItem res -Recurse -Include *.ico -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item "res\icon.ico" $_.FullName -Force }
+        Get-ChildItem res -Recurse -Include *.ico -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item "_jo.ico" $_.FullName -Force }
         Get-ChildItem res -Recurse -Include *.svg -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item "_jo.svg" $_.FullName -Force }
+        Copy-Item "_jo.ico" "res\icon.ico" -Force
         Write-Host "[OK] res/ logo + icons replaced"
         # 3) Rewrite visible "RustDesk" text in the UI + language files
         Get-ChildItem src\ui -Recurse -Include *.tis,*.html,*.css -ErrorAction SilentlyContinue | ForEach-Object { (Get-Content $_.FullName -Raw) -replace 'RustDesk','Join Orbi Remote' | Set-Content $_.FullName -Encoding UTF8 }
