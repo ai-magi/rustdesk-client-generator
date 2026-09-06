@@ -283,19 +283,6 @@ jobs:
           if ($idx.Length -eq $before) { Write-Host "[WARN] InstallMe pattern did not match" } else { Write-Host "[OK] small image-ad slot installed" }
           [System.IO.File]::WriteAllText("src\ui\index.tis", $idx, $utf8)
         } else { Write-Host "[WARN] index.tis not found" }
-        # (c) Big ANIMATED ad replaces the empty Recent-sessions area (ab.tis)
-        if (Test-Path "src\ui\ab.tis") {
-          $ab = [System.IO.File]::ReadAllText("src\ui\ab.tis")
-          $eo = 'return <div style="margin: *; font-size: 1.6em; width: 100px; text-align: center;">{translate("Empty")}</div>;'
-          $en = 'return <div #jo-ad-big style="margin:*; cursor:pointer; text-align:center; padding:1em;"><img #jo-ad-big-img src="https://joinorbi.com/dash/ads/big.gif" style="max-width:96%;" /></div>;'
-          if ($ab.Contains($eo)) { $ab = $ab.Replace($eo, $en); Write-Host "[OK] big-ad markup installed" } else { Write-Host "[WARN] empty-state markup not found" }
-          $rxr = [System.Text.RegularExpressions.Regex]::new('function render\(\)\s*\{\s*var sessions = this\.getSessions\(\);', [System.Text.RegularExpressions.RegexOptions]::Singleline)
-          $rn = "event click `$(#jo-ad-big) {`n        handler.open_url(`"https://joinorbi.com/dash/ads/go.php?slot=big`");`n    }`n`n    function render() {`n        var sessions = this.getSessions();"
-          $b2 = $ab.Length
-          $ab = $rxr.Replace($ab, { param($m) $rn }, 1)
-          if ($ab.Length -eq $b2) { Write-Host "[WARN] big-ad click handler not injected" } else { Write-Host "[OK] big-ad click handler injected" }
-          [System.IO.File]::WriteAllText("src\ui\ab.tis", $ab, $utf8)
-        } else { Write-Host "[WARN] ab.tis not found" }
         # 3b) BULLETPROOF BOM STRIP: inline-sciter.py opens files with Python's
         # default (cp1252 on Windows); any leftover UTF-8 BOM becomes mojibake
         # (\xc3\xaf\xc2\xbb\xc2\xbf) baked before <html>, which makes sciter render blank.
