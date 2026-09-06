@@ -146,7 +146,7 @@ jobs:
         New-Item -Path "src\ui" -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
         
         # Write config JSON
-        '${{ inputs.config_json }}' | Out-File -FilePath "src\ui\config.json" -Encoding UTF8
+        [System.IO.File]::WriteAllText("$PWD\src\ui\config.json", '${{ inputs.config_json }}', (New-Object System.Text.UTF8Encoding $false))
         
         # Parse configuration
         try {
@@ -262,7 +262,20 @@ jobs:
         Get-ChildItem src\ui -Recurse -Include *.tis,*.html,*.css -ErrorAction SilentlyContinue | ForEach-Object { $t = [System.IO.File]::ReadAllText($_.FullName) -replace 'RustDesk','Join Orbi Remote'; [System.IO.File]::WriteAllText($_.FullName, $t, $utf8) }
         Get-ChildItem src\lang -Filter *.rs -ErrorAction SilentlyContinue | ForEach-Object { $t = [System.IO.File]::ReadAllText($_.FullName) -replace 'RustDesk','Join Orbi Remote'; [System.IO.File]::WriteAllText($_.FullName, $t, $utf8) }
         Write-Host "[OK] UI + language text rebranded (no BOM)"
-        # 4) Generate the REAL sciter interface FROM the now-branded files
+        # 3b) BULLETPROOF BOM STRIP: inline-sciter.py opens files with Python's
+        # default (cp1252 on Windows); any leftover UTF-8 BOM becomes mojibake
+        # (\xc3\xaf\xc2\xbb\xc2\xbf) baked before <html>, which makes sciter render blank.
+        # Remove the BOM at the byte level from EVERY file the generator reads.
+        Get-ChildItem src\ui -Recurse -Include *.tis,*.html,*.css -ErrorAction SilentlyContinue | ForEach-Object {
+          $bytes = [System.IO.File]::ReadAllBytes($_.FullName)
+          if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
+            [System.IO.File]::WriteAllBytes($_.FullName, $bytes[3..($bytes.Length-1)])
+            Write-Host "[BOM-STRIP] removed BOM from $($_.Name)"
+          }
+        }
+        # 4) Generate the REAL sciter interface FROM the now-branded files (force UTF-8 in Python)
+        $env:PYTHONUTF8 = "1"
+        $env:PYTHONIOENCODING = "utf-8"
         python3 res/inline-sciter.py
         Write-Host "[SUCCESS] Deep rebrand complete + real inline.rs generated"
         
